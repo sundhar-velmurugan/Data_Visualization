@@ -1,0 +1,110 @@
+// need to transform data for tooltip
+
+req = new XMLHttpRequest();
+req.open('GET', 'https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/GDP-data.json', true);
+req.send();
+req.onload = function() {
+  let data = JSON.parse(req.responseText).data;
+  
+  let svgWidth = 1200;
+  let svgHeight = 600;
+  let barPadding = 20;
+  let topPadding = 40;
+  let leftPadding = 70;
+  let rightPadding = 20;
+  let bottomPadding = 50;
+  let chartWidth = svgWidth-leftPadding-rightPadding;
+  let chartHeight = svgHeight-topPadding-bottomPadding;
+  let barWidth = chartWidth/data.length;
+
+  let svg = d3.select('body')
+              .append('svg')
+              .attr('width', svgWidth)
+              .attr('height', svgHeight)
+              .style('background-color', 'cyan');
+
+  let xScale = d3.scaleBand()
+                .domain(data.map(d => d[0]))
+                .range([leftPadding, chartWidth+leftPadding])
+                .padding(.2);
+
+  let yScale = d3.scaleLinear()
+                .domain([0, d3.max(data, d => d[1])])
+                .range([svgHeight-topPadding, bottomPadding]);
+
+  let yBarScale = d3.scaleLinear()
+                    .domain([0, d3.max(data, d => d[1])])
+                    .range([bottomPadding, svgHeight-topPadding]);
+
+  let ticks = 10;
+  let tickStep = Math.ceil(data.length/ticks);
+  let tickValues = [];
+  for (let i=0; i<data.length; i+=tickStep) {
+    tickValues.push(data[i][0]);
+  }
+  
+  let xAxis = d3.axisBottom()
+                .scale(xScale)
+                .ticks(ticks)
+                .tickValues(tickValues);
+
+  let yAxis = d3.axisLeft()
+                .scale(yScale);
+      
+  svg.append('g')
+    .attr('transform', 'translate(0, '+(svgHeight-topPadding)+')')
+    .attr('id', 'x-axis')
+    .call(xAxis)
+    .append('text')
+    .attr('fill', 'black')
+    .attr('transform','translate('+svgWidth/2+', '+bottomPadding*(2/3)+')')
+    .style('font-size', '14px')
+    .text('Year (1947 - 2015)');
+
+  svg.append('g')
+    .attr('transform', 'translate('+leftPadding+', 0)')
+    .attr('id', 'y-axis')
+    .call(yAxis)
+    .append('text')
+    .attr('fill', 'black')
+    .attr('transform','translate('+(20-leftPadding)+', '+svgHeight*(2/5)+') rotate(-90)')
+    .style('font-size', '14px')
+    .text('GDP in Billions (USD)');
+  
+  svg.append('text')
+    .attr('id', 'title')
+    .attr('x', svgWidth*(2/5))
+    .attr('y', 25)
+    .text('United States GDP');
+  
+  let tooltip = svg.append('text')
+                  .attr('id', 'tooltip')
+                  .attr('fill', 'brown')
+                  .style('font-weight', '600');
+  
+  svg.selectAll('.bar')
+    .data(data)
+    .enter()
+    .append('rect')
+    .attr('x', d => xScale(d[0]))
+    .attr('y', d => yScale(d[1]))
+    .attr('height', d => yBarScale(d[1])-bottomPadding)
+    .attr('width', barWidth-(barWidth/10))
+    .attr('class', 'bar')
+    .attr('fill', 'steelblue')
+    .attr('data-date', d => d[0])
+    .attr('data-gdp', d => d[1])
+    .on('mouseover', d => {
+      tooltip.attr('data-date', d[0])
+        .attr('x', xScale(d[0])-100)
+        .attr('y', yScale(d[1])-15)
+        .text(d[0]+' - $'+d[1]+' Billion');
+    });
+    
+    svg.on('mouseout', () => {
+      tooltip.attr('opacity', 0);
+    });
+    svg.on('mouseover', () => {
+      tooltip.attr('opacity', '100')
+    });
+}
