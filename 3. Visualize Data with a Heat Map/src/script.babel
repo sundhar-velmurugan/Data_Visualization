@@ -1,0 +1,157 @@
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+const COLORS = ['navy', 'darkblue', 'royalblue', 'steelblue', 'dodgerblue', 'lightskyblue', 'lightyellow', 'gold', 'darkorange', 'red', 'darkred'];
+const cLength = COLORS.length;
+
+const plotGraph = (responseText) => {
+  let data = JSON.parse(responseText);
+  let baseTemperature = data.baseTemperature;
+  let plotdata = data.monthlyVariance;
+  let svgHeight = 600;
+  let svgWidth = 1200;
+  let padding = {
+    top: 80,
+    bottom: 100,
+    left: 70,
+    right: 15
+  };
+  let chartHeight = svgHeight-padding.top-padding.bottom;
+  let chartWidth = svgWidth-padding.left-padding.right;
+  
+  let numberOfYears = d3.max(plotdata, d=>d.year)-d3.min(plotdata, d=>d.year);
+  let barWidth = chartWidth/numberOfYears;
+  let barHeight = chartHeight/12;
+  
+  let svg = d3.select('body')
+              .append('svg')
+              .attr('height', svgHeight)
+              .attr('width', svgWidth)
+              .style('background-color', 'LavenderBlush');
+  
+  svg.append('text')
+    .attr('id', 'title')
+    .attr('x', svgWidth*(1/3))
+    .attr('y', padding.bottom*(2/7))
+    .html('Monthly Global Land-Surface Temperature');
+  svg.append('text')
+    .attr('id', 'description')
+    .attr('x', svgWidth*(3/7))
+    .attr('y', padding.bottom*(4/7))
+    .html('1753 - 2015: base temperature '+baseTemperature+'℃');
+  
+  let xScale = d3.scaleLinear()
+                .domain([d3.min(plotdata, d=>d.year), d3.max(plotdata, d=>d.year)])
+                .range([padding.left, svgWidth-padding.right]);
+  
+  let xAxis = d3.axisBottom()
+                .scale(xScale)
+                .ticks(Math.floor(chartWidth/100))
+                .tickFormat(d3.format('d'));
+  
+  svg.append('g')
+    .attr('id', 'x-axis')
+    .attr('transform', 'translate(0, '+(svgHeight-padding.top)+')')
+    .call(xAxis);
+  
+  let yScale = d3.scaleLinear()
+                .domain([0, 11])
+                .range([padding.bottom, svgHeight-padding.top]);
+  
+  let yAxis = d3.axisLeft()
+                .scale(yScale)
+                .tickFormat(d => MONTHS[d]);
+  
+  svg.append('g')
+    .attr('id', 'y-axis')
+    .attr('transform', 'translate('+padding.left+', '+(-barHeight)+')')
+    .call(yAxis);
+  
+  let minTemp = Number((baseTemperature + d3.min(plotdata, d=>d.variance)).toFixed(3));
+  let maxTemp = Number((baseTemperature + d3.max(plotdata, d=>d.variance)).toFixed(3));
+  
+  let legendStep = (maxTemp-minTemp)/cLength;
+  let legendDomain = [];
+  
+  for (let i=0, len=cLength; i<len; i++) {
+    legendDomain.push(minTemp+i*legendStep)
+  }
+  
+  let legendThreshold = d3.scaleThreshold()
+                          .domain(legendDomain)
+                          .range(COLORS);
+  
+  let legendWidth = 300;
+  let legendHeight = padding.top/3;
+  
+  let legendXScale = d3.scaleLinear()
+                      .domain([minTemp, maxTemp])
+                      .range([0, legendWidth]);
+  
+  let legendXAxis = d3.axisBottom()
+                      .scale(legendXScale)
+                      .tickValues(legendThreshold.domain())
+                      .tickFormat(d3.format(".1f"));
+  
+  let legend = svg.append('g')
+        .attr('id', 'legend')
+        .attr('transform', 'translate('+(padding.left)+','+(svgHeight - 2*legendHeight)+')');
+  
+  legend.append('g')
+      .selectAll('rect')
+      .data(legendThreshold.range().map(function(color){
+        let d = legendThreshold.invertExtent(color);
+        if(!d[0]) d[0] = legendXScale.domain()[0];
+        if(!d[1]) d[1] = legendXScale.domain()[1];
+        return d;
+      }))
+      .enter().append('rect')
+      .style('fill', d => legendThreshold(d[0]))
+      .attr('x', d => legendXScale(d[0]))
+      .attr('y', 0)
+      .attr('height', legendHeight)
+      .attr('width', d => legendXScale(d[1])-legendXScale(d[0]));
+  
+  legend.append('g')
+        .attr('transform', 'translate('+0+','+legendHeight+')')
+        .call(legendXAxis);
+  
+  let tooltip = svg.append('text')
+                  .attr('id', 'tooltip')
+                  .style('font-weight', '600');
+  
+  svg.selectAll('rect')
+    .data(plotdata)
+    .enter()
+    .append('rect')
+    .attr('class', 'cell')
+    .attr('x', d => xScale(d.year))
+    .attr('y', d => yScale(d.month-1)-barHeight)
+    .attr('height', barHeight)
+    .attr('width', barWidth)
+    .attr('data-month', d => d.month-1)
+    .attr('data-year', d => d.year)
+    .attr('data-temp', d => baseTemperature+d.variance)
+    .attr('fill', d => legendThreshold(baseTemperature + d.variance))
+    .on('mouseover', d => {
+      tooltip.attr('data-year', d.year)
+        .attr('x', xScale(d.year)-100)
+        .attr('y', yScale(d.month-1))
+        .text(d.year);
+    });
+    
+    svg.on('mouseout', () => {
+      tooltip.attr('opacity', 0);
+    });
+    svg.on('mouseover', () => {
+      tooltip.attr('opacity', '100')
+    });
+}
+
+let req = new XMLHttpRequest();
+req.open('GET', 'https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/global-temperature.json', true);
+req.send();
+req.onload = () => {
+  if (req.readyState === 4 && req.status === 200) {
+    plotGraph(req.responseText);
+  }
+};
