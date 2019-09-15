@@ -1,0 +1,12 @@
+body {
+  text-align: center;
+}
+#tooltip {
+  position: absolute;
+  border: 2px solid black;
+  border-radius: 5px;
+  padding: 10px;
+  background-color: forestgreen;
+  font-size: 24px;
+  font-weight: 600;
+}
