@@ -32,12 +32,16 @@ function constructMap(mapData, eduData) {
   html('Percentage of adults age 25 and older with a bachelor\'s degree or higher (2010-2014)').
   style('font-size', '26px');
 
+  let minData = d3.min(d3.values(eduData), d => d.bachelorsOrHigher);
   let maxData = d3.max(d3.values(eduData), d => d.bachelorsOrHigher);
+  let step = (maxData - minData) / 10;
 
-  let legendDomain = [];
-  for (let i = 0; i < 10; i++) {
-    legendDomain.push(Number((0.1 + i * 0.1).toFixed(1)));
+  let legendDomain = [minData];
+  for (let i = 1; i <= 8; i++) {
+    legendDomain.push(Number((minData + i * step).toFixed(1)));
   }
+  legendDomain.push(maxData);
+  console.log(legendDomain);
 
   let color = d3.scaleThreshold().
   domain(legendDomain).
@@ -55,7 +59,7 @@ function constructMap(mapData, eduData) {
   enter().
   append('path').
   attr('d', path).
-  attr('fill', d => color(eduData[d.id].bachelorsOrHigher / maxData)).
+  attr('fill', d => color(eduData[d.id].bachelorsOrHigher)).
   attr('class', 'county').
   attr('data-fips', d => eduData[d.id].fips).
   attr('data-education', d => eduData[d.id].bachelorsOrHigher).
@@ -105,5 +109,5 @@ function constructMap(mapData, eduData) {
   attr('y', 9).
   attr('dy', '0.35em').
   style('text-anchor', 'end').
-  text(d => `${(d - 0.1).toFixed(1) * 100}%-${d * 100}%`);
+  text((d, i) => legendDomain[i - 1] ? `${legendDomain[i - 1]}% - ${d}%` : ` Upto ${d}%`);
 }
