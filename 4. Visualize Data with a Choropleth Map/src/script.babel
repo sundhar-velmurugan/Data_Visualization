@@ -109,5 +109,5 @@ function constructMap(mapData, eduData) {
         .attr('y', 9)
         .attr('dy', '0.35em')
         .style('text-anchor', 'end')
-        .text((d, i) => (legendDomain[i-1]?`${legendDomain[i-1]}% - ${d}%`: ` Upto ${d}%`))
+        .text((d, i) => (legendDomain[i+1]?`${d}% - ${legendDomain[i+1]}%`: ` ${d}% and above`))
 }
